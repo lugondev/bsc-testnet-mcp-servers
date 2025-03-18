@@ -5,7 +5,8 @@
   "version": "1.0.0",
   "description": "Model Context Protocol (MCP) server for interacting with EVM-compatible networks",
   "bin": {
-    "evm-mcp-server": "./bin/cli.js"
+    "evm-mcp-server": "./bin/cli.js",
+    "deploy-erc20": "./build/deploy-token.js"
   },
   "main": "build/index.js",
   "files": [
@@ -18,22 +19,30 @@
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir build --target node",
     "build:http": "bun build src/server/http-server.ts --outdir build --target node --outfile http-server.js",
+    "build:scripts": "bun build src/scripts/deploy-token.ts --outdir build --target node --outfile deploy-token.js",
     "dev": "bun --watch src/index.ts",
     "start:http": "bun run src/server/http-server.ts",
     "dev:http": "bun --watch src/server/http-server.ts",
-    "prepublishOnly": "bun run build && bun run build:http"
+    "prepublishOnly": "bun run build && bun run build:http && bun run build:scripts"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "prisma": "^6.5.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.2"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
+    "@prisma/client": "^6.5.0",
+    "@types/dotenv": "^6.1.1",
+    "@uniswap/sdk-core": "^7.7.2",
+    "@uniswap/smart-order-router": "^4.20.4",
+    "@uniswap/universal-router-sdk": "^4.19.5",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "viem": "^2.23.9",
     "zod": "^3.24.2"

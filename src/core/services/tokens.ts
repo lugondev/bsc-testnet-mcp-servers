@@ -1,7 +1,5 @@
-import { 
-  type Address, 
-  type Hex,
-  type Hash,
+import {
+  type Address,
   formatUnits,
   getContract
 } from 'viem';
@@ -162,4 +160,4 @@ export async function getERC1155TokenURI(
   });
 
   return contract.read.uri([tokenId]);
-} 
+}

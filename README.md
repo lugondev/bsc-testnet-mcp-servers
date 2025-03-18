@@ -462,18 +462,29 @@ mcp-evm-server/
 │   ├── core/
 │   │   ├── chains.ts           # Chain definitions and utilities
 │   │   ├── resources.ts        # MCP resources implementation
-│   │   ├── tools.ts            # MCP tools implementation
-│   │   ├── prompts.ts          # MCP prompts implementation
-│   │   └── services/           # Core blockchain services
-│   │       ├── index.ts        # Operation exports
-│   │       ├── balance.ts      # Balance services
-│   │       ├── transfer.ts     # Token transfer services
-│   │       ├── utils.ts        # Utility functions
-│   │       ├── tokens.ts       # Token metadata services
-│   │       ├── contracts.ts    # Contract interactions
+│   │   ├── tools.ts           # MCP tools implementation
+│   │   ├── prompts.ts         # MCP prompts implementation 
+│   │   ├── wallet-tools.ts    # Wallet-related tools
+│   │   ├── constants/         # Constants and configurations
+│   │   │   └── pancakeswap.ts # PancakeSwap-specific constants
+│   │   ├── wallet/           # Wallet operations
+│   │   │   ├── index.ts      # Wallet exports
+│   │   │   ├── manage.ts     # Wallet management
+│   │   │   ├── swap.ts       # Token swap operations
+│   │   │   └── transfer.ts   # Token transfer operations
+│   │   └── services/         # Core blockchain services
+│   │       ├── index.ts      # Operation exports
+│   │       ├── balance.ts    # Balance services
+│   │       ├── blocks.ts     # Block services
+│   │       ├── clients.ts    # RPC client utilities
+│   │       ├── contracts.ts  # Contract interactions
+│   │       ├── ens.ts       # ENS resolution services
+│   │       ├── router.ts    # Routing services
+│   │       ├── tokens.ts    # Token metadata services
 │   │       ├── transactions.ts # Transaction services
-│   │       └── blocks.ts       # Block services
-│   │       └── clients.ts      # RPC client utilities
+│   │       ├── transfer.ts  # Transfer services
+│   │       ├── utils.ts     # Utility functions
+│   │       └── wallet.ts    # Wallet services
 ├── package.json
 ├── tsconfig.json
 └── README.md

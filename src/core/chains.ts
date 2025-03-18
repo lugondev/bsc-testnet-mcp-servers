@@ -30,7 +30,7 @@ import {
   zora,
   aurora,
   canto,
-  
+
   // Testnets
   sepolia,
   optimismSepolia,
@@ -56,8 +56,8 @@ import {
 } from 'viem/chains';
 
 // Default configuration values
-export const DEFAULT_RPC_URL = 'https://eth.llamarpc.com';
-export const DEFAULT_CHAIN_ID = 1;
+export const DEFAULT_RPC_URL = 'https://data-seed-prebsc-1-s1.binance.org:8545';
+export const DEFAULT_CHAIN_ID = 97;
 
 // Map chain IDs to chains
 export const chainMap: Record<number, Chain> = {
@@ -91,7 +91,7 @@ export const chainMap: Record<number, Chain> = {
   7777777: zora,
   1313161554: aurora,
   7700: canto,
-  
+
   // Testnets
   11155111: sepolia,
   11155420: optimismSepolia,
@@ -160,7 +160,7 @@ export const networkNameMap: Record<string, number> = {
   'zora': 7777777,
   'aurora': 1313161554,
   'canto': 7700,
-  
+
   // Testnets
   'sepolia': 11155111,
   'optimism-sepolia': 11155420,
@@ -237,7 +237,7 @@ export const rpcUrlMap: Record<number, string> = {
   7777777: 'https://rpc.zora.energy',
   1313161554: 'https://mainnet.aurora.dev',
   7700: 'https://canto.gravitychain.io',
-  
+
   // Testnets
   11155111: 'https://sepolia.drpc.org',
   11155420: 'https://sepolia.optimism.io',
@@ -271,21 +271,21 @@ export function resolveChainId(chainIdentifier: number | string): number {
   if (typeof chainIdentifier === 'number') {
     return chainIdentifier;
   }
-  
+
   // Convert to lowercase for case-insensitive matching
   const networkName = chainIdentifier.toLowerCase();
-  
+
   // Check if the network name is in our map
   if (networkName in networkNameMap) {
     return networkNameMap[networkName];
   }
-  
+
   // Try parsing as a number
   const parsedId = parseInt(networkName);
   if (!isNaN(parsedId)) {
     return parsedId;
   }
-  
+
   // Default to mainnet if not found
   return DEFAULT_CHAIN_ID;
 }
@@ -303,11 +303,11 @@ export function getChain(chainIdentifier: number | string = DEFAULT_CHAIN_ID): C
     if (networkNameMap[networkName]) {
       return chainMap[networkNameMap[networkName]] || mainnet;
     }
-    
+
     // If not found, throw an error
     throw new Error(`Unsupported network: ${chainIdentifier}`);
   }
-  
+
   // If it's a number, return the chain from chainMap
   return chainMap[chainIdentifier] || mainnet;
 }
@@ -318,10 +318,10 @@ export function getChain(chainIdentifier: number | string = DEFAULT_CHAIN_ID): C
  * @returns The RPC URL for the specified chain
  */
 export function getRpcUrl(chainIdentifier: number | string = DEFAULT_CHAIN_ID): string {
-  const chainId = typeof chainIdentifier === 'string' 
-    ? resolveChainId(chainIdentifier) 
+  const chainId = typeof chainIdentifier === 'string'
+    ? resolveChainId(chainIdentifier)
     : chainIdentifier;
-    
+
   return rpcUrlMap[chainId] || DEFAULT_RPC_URL;
 }
 
