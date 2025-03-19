@@ -284,16 +284,16 @@ export async function deployERC20Token(
   const client = getEnvWalletClient(network);
 
   // Convert total supply to the correct number of decimals
-  const totalSupplyWithDecimals = parseUnits(
-    totalSupply.toString(),
-    decimals
-  );
+  // const totalSupplyWithDecimals = parseUnits(
+  //   totalSupply.toString(),
+  //   decimals
+  // );
 
   // Deploy the contract
   const txHash = await client.deployContract({
     abi: ERC20_ABI,
     bytecode: ERC20_BYTECODE,
-    args: [name, symbol, decimals, totalSupplyWithDecimals],
+    args: [name, symbol, decimals, totalSupply],
     account: client.account!,
     chain: client.chain
   });
