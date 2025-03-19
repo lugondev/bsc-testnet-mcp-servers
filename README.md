@@ -30,7 +30,7 @@ The MCP EVM Server leverages the Model Context Protocol to provide blockchain se
 
 - Reading blockchain state (balances, transactions, blocks, etc.)
 - Interacting with smart contracts
-- Transferring tokens (native, ERC20, ERC721, ERC1155)
+- Transferring tokens (native, ERC20, ERC721)
 - Querying token metadata and balances
 - Chain-specific services across 30+ EVM networks
 - **ENS name resolution** for all address parameters (use human-readable names like 'vitalik.eth' instead of addresses)
@@ -61,11 +61,6 @@ All services are exposed through a consistent interface of MCP tools and resourc
   - Verify token ownership
   - Transfer NFTs between addresses
   - Retrieve token URIs and count holdings
-
-- **Multi-tokens (ERC1155)**
-  - Get token balances and metadata
-  - Transfer tokens with quantity
-  - Access token URIs
 
 ### Smart Contract Interactions
 
@@ -392,15 +387,11 @@ The server provides the following MCP tools for agents. **All tools that accept 
 |-----------|-------------|----------------|
 | `get-token-info` | Get ERC20 token metadata | `tokenAddress` (address/ENS), `network` |
 | `get-token-balance` | Check ERC20 token balance | `tokenAddress` (address/ENS), `ownerAddress` (address/ENS), `network` |
-| `transfer-token` | Transfer ERC20 tokens | `privateKey`, `tokenAddress` (address/ENS), `toAddress` (address/ENS), `amount`, `network` |
-| `approve-token-spending` | Approve token allowances | `privateKey`, `tokenAddress` (address/ENS), `spenderAddress` (address/ENS), `amount`, `network` |
+| `transfer-token` | Transfer ERC20 tokens | `tokenAddress` (address/ENS), `toAddress` (address/ENS), `amount`, `network` |
 | `get-nft-info` | Get NFT metadata | `tokenAddress` (address/ENS), `tokenId`, `network` |
 | `check-nft-ownership` | Verify NFT ownership | `tokenAddress` (address/ENS), `tokenId`, `ownerAddress` (address/ENS), `network` |
-| `transfer-nft` | Transfer an NFT | `privateKey`, `tokenAddress` (address/ENS), `tokenId`, `toAddress` (address/ENS), `network` |
+| `transfer-nft` | Transfer an NFT | `tokenAddress` (address/ENS), `tokenId`, `toAddress` (address/ENS), `network` |
 | `get-nft-balance` | Count NFTs owned | `tokenAddress` (address/ENS), `ownerAddress` (address/ENS), `network` |
-| `get-erc1155-token-uri` | Get ERC1155 metadata | `tokenAddress` (address/ENS), `tokenId`, `network` |
-| `get-erc1155-balance` | Check ERC1155 balance | `tokenAddress` (address/ENS), `tokenId`, `ownerAddress` (address/ENS), `network` |
-| `transfer-erc1155` | Transfer ERC1155 tokens | `privateKey`, `tokenAddress` (address/ENS), `tokenId`, `amount`, `toAddress` (address/ENS), `network` |
 
 #### Blockchain services
 
@@ -439,8 +430,6 @@ The server exposes blockchain data through the following MCP resource URIs. All 
 | `evm://{network}/token/{tokenAddress}/balanceOf/{address}` | ERC20 token balance |
 | `evm://{network}/nft/{tokenAddress}/{tokenId}` | NFT (ERC721) token information |
 | `evm://{network}/nft/{tokenAddress}/{tokenId}/isOwnedBy/{address}` | NFT ownership verification |
-| `evm://{network}/erc1155/{tokenAddress}/{tokenId}/uri` | ERC1155 token URI |
-| `evm://{network}/erc1155/{tokenAddress}/{tokenId}/balanceOf/{address}` | ERC1155 token balance |
 
 ## 🔒 Security Considerations
 
