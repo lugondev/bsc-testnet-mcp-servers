@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 ### Changed
+- Changed default network from Ethereum to BSC
+  - Updated all tools and services to default to BSC network
+  - Updated wallet transfer functions to prioritize BSC
+  - Updated transaction services to use BSC by default
+  - Updated examples to use BSC contract addresses
+  - Added proper BNB/native token references in documentation
+  - Modified network descriptions to prioritize BSC
+- Replaced environment private key with stored wallet functionality
+  - Removed PRIVATE_KEY environment variable dependency
+  - Added stored wallet support for all transaction operations
+  - Added explicit wallet name selection for all transactions
+  - Removed automatic wallet selection for better security
+  - Added wallet verification before transactions
+  - Updated error messages to guide users to select valid wallets
+  - Improved security by storing wallets in database
 - Refactored wallet tools for better organization and maintainability
   - Split wallet-tools.ts into modular components (transfer, swap, manage)
   - Improved type safety with proper TypeScript interfaces
@@ -17,3 +32,10 @@
 - Support for 30+ EVM networks including testnets
 - Integration with Cursor through mcp.json configuration
 - HTTP server mode with SSE support for web applications
+- Standard and tax token deployment tools
+  - Standard ERC20 token deployment with configurable parameters
+  - Tax token deployment with DEX integration
+  - Support for UniswapV2Router02 and PancakeRouter
+  - Configurable buy/sell fee percentages
+  - Development fund for collecting fees
+  - Automatic liquidity pair creation

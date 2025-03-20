@@ -9,6 +9,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { getChain, getRpcUrl } from '../chains.js';
+import { walletService } from './wallet.js';
 
 // Error messages
 const ERROR_MESSAGES = {
@@ -106,12 +107,16 @@ export function getWalletClient(privateKey: string | Hex, network = 'ethereum'):
 }
 
 /**
- * Get a wallet client using the private key from environment variables
- * @throws Error if PRIVATE_KEY is not set or client creation fails
+ * Get a wallet client using a stored wallet
+ * @throws Error if wallet name is not found or client creation fails
  */
-export function getEnvWalletClient(network = 'ethereum'): WalletClient {
-  const privateKey = getPrivateKey();
-  return getWalletClient(privateKey, network);
+export async function getStoredWalletClient(walletName: string, network = 'ethereum'): Promise<WalletClient> {
+  try {
+    const wallet = await walletService.getWalletByName(walletName);
+    return getWalletClient(wallet.privateKey as Hex, network);
+  } catch (error) {
+    throw new Error(`Failed to get stored wallet client: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /**

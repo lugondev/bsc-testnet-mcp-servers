@@ -2,7 +2,7 @@ import {
 	type Address,
 	type Hash
 } from 'viem';
-import { getEnvWalletClient, getPublicClient } from './clients.js';
+import { getPublicClient, getStoredWalletClient } from './clients.js';
 
 // Standard ERC20 contract bytecode and ABI
 const ERC20_ABI = [
@@ -261,6 +261,7 @@ const ERC20_BYTECODE = '0x608060405234801561000f575f80fd5b5060405161193138038061
 
 /**
  * Deploy a new ERC20 token contract standard
+ * @param walletName Wallet name
  * @param name Token name
  * @param symbol Token symbol
  * @param decimals Token decimals (default: 18)
@@ -269,13 +270,14 @@ const ERC20_BYTECODE = '0x608060405234801561000f575f80fd5b5060405161193138038061
  * @returns Transaction hash and contract address
  */
 export async function deployERC20TokenStandard(
+	walletName: string,
 	name: string,
 	symbol: string,
 	decimals: number = 18,
 	totalSupply: number = 100000000,
 	network = 'bsc-testnet'
 ): Promise<{ txHash: Hash; contractAddress: Address }> {
-	const client = getEnvWalletClient(network);
+	const client = await getStoredWalletClient(walletName, network);
 
 	// Deploy the contract
 	const txHash = await client.deployContract({

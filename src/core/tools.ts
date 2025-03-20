@@ -8,17 +8,384 @@ import { registerWalletTools } from './wallet-tools.js';
 
 /**
  * Register all EVM-related tools with the MCP server
- * 
- * All tools that accept Ethereum addresses also support ENS names (e.g., 'vitalik.eth').
- * ENS names are automatically resolved to addresses using the Ethereum Name Service.
- * 
- * @param server The MCP server instance
  */
 export function registerEVMTools(server: McpServer) {
-  // Register wallet tools
+
   registerWalletTools(server);
 
-  // NETWORK INFORMATION TOOLS
+  // Deploy standard ERC20 token
+  server.tool(
+    "deploy_standard_token",
+    "Deploy a new standard ERC20 token contract",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for deployment"),
+      name: z.string().describe("Token name (e.g., 'My Token')"),
+      symbol: z.string().describe("Token symbol/ticker (e.g., 'MTK')"),
+      decimals: z.number().optional().describe("Number of decimals for the token (default: 18)"),
+      totalSupply: z.number().optional().describe("Total supply of tokens to mint (default: 100,000,000)"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, name, symbol, decimals = 18, totalSupply = 100000000, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const result = await services.deployERC20TokenStandard(
+          walletName,
+          name,
+          symbol,
+          decimals,
+          totalSupply,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              network,
+              transactionHash: result.txHash,
+              contractAddress: result.contractAddress,
+              name,
+              symbol,
+              decimals,
+              totalSupply,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error deploying standard token: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Deploy tax token
+  server.tool(
+    "deploy_tax_token",
+    "Deploy a new ERC20 token with tax functionality on buy/sell transactions",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for deployment"),
+      name: z.string().describe("Token name (e.g., 'My Token')"),
+      symbol: z.string().describe("Token symbol/ticker (e.g., 'MTK')"),
+      dexRouter: z.string().describe("DEX router contract address for liquidity pair creation"),
+      developmentFund: z.string().optional().describe("Address that receives collected transaction fees (defaults to zero address)"),
+      percentageBuyFee: z.number().optional().describe("Fee percentage charged on buy transactions (e.g., 5 for 5%, default: 0)"),
+      percentageSellFee: z.number().optional().describe("Fee percentage charged on sell transactions (e.g., 5 for 5%, default: 0)"),
+      totalSupply: z.number().optional().describe("Total supply of tokens to mint (default: 100,000,000)"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, name, symbol, dexRouter, developmentFund, percentageBuyFee = 0, percentageSellFee = 0, totalSupply = 100000000, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const result = await services.deployERC20TokenTax(
+          name,
+          symbol,
+          dexRouter as Address,
+          walletName,
+          developmentFund as Address,
+          percentageBuyFee,
+          percentageSellFee,
+          totalSupply,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              network,
+              transactionHash: result.txHash,
+              contractAddress: result.contractAddress,
+              name,
+              symbol,
+              dexRouter,
+              developmentFund,
+              buyFeePercentage: percentageBuyFee,
+              sellFeePercentage: percentageSellFee,
+              totalSupply,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error deploying tax token: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Transfer ETH using stored wallet
+  server.tool(
+    "transfer_eth",
+    "Transfer native tokens (BNB, ETH, etc.) to an address using a stored wallet",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      to: z.string().describe("The recipient address or ENS name (e.g., '0x1234...' or 'vitalik.eth')"),
+      amount: z.string().describe("Amount to send in native token (BNB, ETH, etc.), as a string (e.g., '0.1')"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, to, amount, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const txHash = await services.transferETHWithStoredWallet(
+          walletName,
+          to,
+          amount,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              txHash,
+              to,
+              amount,
+              network,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error transferring native token: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Transfer ERC20 using stored wallet
+  server.tool(
+    "transfer_erc20",
+    "Transfer ERC20 tokens to another address using a stored wallet",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      tokenAddress: z.string().describe("The address of the ERC20 token contract"),
+      toAddress: z.string().describe("The recipient address"),
+      amount: z.string().describe("The amount of tokens to send (in token units, e.g., '10' for 10 tokens)"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, tokenAddress, toAddress, amount, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const result = await services.transferERC20WithStoredWallet(
+          walletName,
+          tokenAddress as Address,
+          toAddress as Address,
+          amount,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              txHash: result.txHash,
+              network,
+              tokenAddress,
+              recipient: toAddress,
+              amount: result.amount.formatted,
+              symbol: result.token.symbol,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error transferring ERC20 tokens: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Approve ERC20 token spending using stored wallet
+  server.tool(
+    "approve_token_spending",
+    "Approve another address (like a DeFi protocol or exchange) to spend your ERC20 tokens using a stored wallet. This is often required before interacting with DeFi protocols.",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      tokenAddress: z.string().describe("The contract address of the ERC20 token to approve for spending (e.g., '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c' for WBNB on BSC)"),
+      spenderAddress: z.string().describe("The contract address being approved to spend your tokens (e.g., a DEX or lending protocol)"),
+      amount: z.string().describe("The amount of tokens to approve in token units, not wei (e.g., '1000' to approve spending 1000 tokens). Use a very large number for unlimited approval."),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, tokenAddress, spenderAddress, amount, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const result = await services.approveERC20WithStoredWallet(
+          walletName,
+          tokenAddress as Address,
+          spenderAddress as Address,
+          amount,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              txHash: result.txHash,
+              network,
+              tokenAddress,
+              spender: spenderAddress,
+              amount: result.amount.formatted,
+              symbol: result.token.symbol,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error approving token spending: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Transfer NFT (ERC721) using stored wallet
+  server.tool(
+    "transfer_nft",
+    "Transfer an NFT (ERC721 token) from one address to another using a stored wallet.",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      tokenAddress: z.string().describe("The contract address of the NFT collection"),
+      tokenId: z.string().describe("The ID of the specific NFT to transfer (e.g., '1234')"),
+      toAddress: z.string().describe("The recipient wallet address that will receive the NFT"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, tokenAddress, tokenId, toAddress, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const result = await services.transferERC721WithStoredWallet(
+          walletName,
+          tokenAddress as Address,
+          toAddress as Address,
+          BigInt(tokenId),
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              txHash: result.txHash,
+              network,
+              collection: tokenAddress,
+              tokenId: result.tokenId,
+              recipient: toAddress,
+              name: result.token.name,
+              symbol: result.token.symbol,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error transferring NFT: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // Write to contract using stored wallet
+  server.tool(
+    "write_contract",
+    "Write data to a smart contract by calling a state-changing function using a stored wallet. This modifies blockchain state and requires gas payment and transaction signing.",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      contractAddress: z.string().describe("The address of the smart contract to interact with"),
+      abi: z.array(z.any()).describe("The ABI (Application Binary Interface) of the smart contract function, as a JSON array"),
+      functionName: z.string().describe("The name of the function to call on the contract (e.g., 'transfer')"),
+      args: z.array(z.any()).describe("The arguments to pass to the function, as an array (e.g., ['0x1234...', '1000000000000000000'])"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+    },
+    async ({ walletName, contractAddress, abi, functionName, args, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        // Parse ABI if it's a string
+        const parsedAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
+
+        const contractParams: Record<string, any> = {
+          address: contractAddress as Address,
+          abi: parsedAbi,
+          functionName,
+          args
+        };
+
+        const txHash = await services.writeContractWithStoredWallet(
+          walletName,
+          contractParams,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              network,
+              transactionHash: txHash,
+              fromWallet: walletName,
+              message: "Contract write transaction sent successfully"
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error writing to contract: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
 
   // Get chain information
   server.tool(
@@ -27,7 +394,7 @@ export function registerEVMTools(server: McpServer) {
     {
       network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
     },
-    async ({ network = "ethereum" }) => {
+    async ({ network = "bsc" }) => {
       try {
         const chainId = await services.getChainId(network);
         const blockNumber = await services.getBlockNumber(network);
@@ -66,7 +433,7 @@ export function registerEVMTools(server: McpServer) {
       ensName: z.string().describe("ENS name to resolve (e.g., 'vitalik.eth')"),
       network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. ENS resolution works best on Ethereum mainnet. Defaults to Ethereum mainnet.")
     },
-    async ({ ensName, network = "ethereum" }) => {
+    async ({ ensName, network = "bsc" }) => {
       try {
         // Validate that the input is an ENS name
         if (!ensName.includes('.')) {
@@ -144,7 +511,7 @@ export function registerEVMTools(server: McpServer) {
     {
       network: z.string().optional().describe("Network name or chain ID. Defaults to Ethereum mainnet.")
     },
-    async ({ network = "ethereum" }) => {
+    async ({ network = "bsc" }) => {
       try {
         const block = await services.getLatestBlock(network);
 
@@ -176,7 +543,7 @@ export function registerEVMTools(server: McpServer) {
       address: z.string().describe("The wallet address or ENS name (e.g., '0x1234...' or 'vitalik.eth') to check the balance for"),
       network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
     },
-    async ({ address, network = "ethereum" }) => {
+    async ({ address, network = "bsc" }) => {
       try {
         const balance = await services.getETHBalance(address, network);
 
@@ -212,7 +579,7 @@ export function registerEVMTools(server: McpServer) {
       ownerAddress: z.string().describe("The wallet address or ENS name to check the balance for (e.g., '0x1234...' or 'vitalik.eth')"),
       network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
     },
-    async ({ tokenAddress, ownerAddress, network = "ethereum" }) => {
+    async ({ tokenAddress, ownerAddress, network = "bsc" }) => {
       try {
         const balance = await services.getERC20Balance(tokenAddress, ownerAddress, network);
 
@@ -252,7 +619,7 @@ export function registerEVMTools(server: McpServer) {
       txHash: z.string().describe("The transaction hash to look up (e.g., '0x1234...')"),
       network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Defaults to Ethereum mainnet.")
     },
-    async ({ txHash, network = "ethereum" }) => {
+    async ({ txHash, network = "bsc" }) => {
       try {
         const tx = await services.getTransaction(txHash as Hash, network);
 
@@ -282,7 +649,7 @@ export function registerEVMTools(server: McpServer) {
       txHash: z.string().describe("The transaction hash to look up"),
       network: z.string().optional().describe("Network name or chain ID. Defaults to Ethereum mainnet.")
     },
-    async ({ txHash, network = "ethereum" }) => {
+    async ({ txHash, network = "bsc" }) => {
       try {
         const receipt = await services.getTransactionReceipt(txHash as Hash, network);
 
@@ -297,550 +664,6 @@ export function registerEVMTools(server: McpServer) {
           content: [{
             type: "text",
             text: `Error fetching transaction receipt ${txHash}: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // TRANSFER TOOLS
-
-  // Transfer ETH using environment private key
-  server.tool(
-    "transfer_eth",
-    "Transfer native tokens (ETH, BASE, etc.) to an address using the server's private key",
-    {
-      to: z.string().describe("The recipient address or ENS name (e.g., '0x1234...' or 'vitalik.eth')"),
-      amount: z.string().describe("Amount to send in ETH (or the native token of the network), as a string (e.g., '0.1')"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
-    },
-    async ({ to, amount, network = "ethereum" }) => {
-      try {
-        const txHash = await services.transferETHWithEnvKey(to, amount, network);
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              txHash,
-              to,
-              amount,
-              network
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error transferring ETH: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Transfer ERC20 using environment private key
-  server.tool(
-    "transfer_erc20",
-    "Transfer ERC20 tokens to another address using the server's private key",
-    {
-      tokenAddress: z.string().describe("The address of the ERC20 token contract"),
-      toAddress: z.string().describe("The recipient address"),
-      amount: z.string().describe("The amount of tokens to send (in token units, e.g., '10' for 10 tokens)"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
-    },
-    async ({ tokenAddress, toAddress, amount, network = "ethereum" }) => {
-      try {
-        const result = await services.transferERC20WithEnvKey(
-          tokenAddress as Address,
-          toAddress as Address,
-          amount,
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              txHash: result.txHash,
-              network,
-              tokenAddress,
-              recipient: toAddress,
-              amount: result.amount.formatted,
-              symbol: result.token.symbol
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error transferring ERC20 tokens: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Approve ERC20 token spending using environment private key
-  server.tool(
-    "approve_token_spending",
-    "Approve another address (like a DeFi protocol or exchange) to spend your ERC20 tokens using the server's private key. This is often required before interacting with DeFi protocols.",
-    {
-      tokenAddress: z.string().describe("The contract address of the ERC20 token to approve for spending (e.g., '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' for USDC on Ethereum)"),
-      spenderAddress: z.string().describe("The contract address being approved to spend your tokens (e.g., a DEX or lending protocol)"),
-      amount: z.string().describe("The amount of tokens to approve in token units, not wei (e.g., '1000' to approve spending 1000 tokens). Use a very large number for unlimited approval."),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Defaults to Ethereum mainnet.")
-    },
-    async ({ tokenAddress, spenderAddress, amount, network = "ethereum" }) => {
-      try {
-        const result = await services.approveERC20WithEnvKey(
-          tokenAddress as Address,
-          spenderAddress as Address,
-          amount,
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              txHash: result.txHash,
-              network,
-              tokenAddress,
-              spender: spenderAddress,
-              amount: result.amount.formatted,
-              symbol: result.token.symbol
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error approving token spending: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Transfer NFT (ERC721) using environment private key
-  server.tool(
-    "transfer_nft",
-    "Transfer an NFT (ERC721 token) from one address to another using the server's private key.",
-    {
-      tokenAddress: z.string().describe("The contract address of the NFT collection (e.g., '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D' for Bored Ape Yacht Club)"),
-      tokenId: z.string().describe("The ID of the specific NFT to transfer (e.g., '1234')"),
-      toAddress: z.string().describe("The recipient wallet address that will receive the NFT"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Most NFTs are on Ethereum mainnet, which is the default.")
-    },
-    async ({ tokenAddress, tokenId, toAddress, network = "ethereum" }) => {
-      try {
-        const result = await services.transferERC721WithEnvKey(
-          tokenAddress as Address,
-          toAddress as Address,
-          BigInt(tokenId),
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              txHash: result.txHash,
-              network,
-              collection: tokenAddress,
-              tokenId: result.tokenId,
-              recipient: toAddress,
-              name: result.token.name,
-              symbol: result.token.symbol
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error transferring NFT: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Transfer ERC20 tokens using environment private key
-  server.tool(
-    "transfer_token",
-    "Transfer ERC20 tokens to an address using the server's private key",
-    {
-      tokenAddress: z.string().describe("The contract address or ENS name of the ERC20 token to transfer (e.g., '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' for USDC or 'uniswap.eth')"),
-      toAddress: z.string().describe("The recipient address or ENS name that will receive the tokens (e.g., '0x1234...' or 'vitalik.eth')"),
-      amount: z.string().describe("Amount of tokens to send as a string (e.g., '100' for 100 tokens). This will be adjusted for the token's decimals."),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
-    },
-    async ({ tokenAddress, toAddress, amount, network = "ethereum" }) => {
-      try {
-        const result = await services.transferERC20WithEnvKey(
-          tokenAddress,
-          toAddress,
-          amount,
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              txHash: result.txHash,
-              tokenAddress,
-              toAddress,
-              amount: result.amount.formatted,
-              symbol: result.token.symbol,
-              network
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error transferring tokens: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // CONTRACT TOOLS
-
-  // Read contract
-  server.tool(
-    "read_contract",
-    "Read data from a smart contract by calling a view/pure function. This doesn't modify blockchain state and doesn't require gas or signing.",
-    {
-      contractAddress: z.string().describe("The address of the smart contract to interact with"),
-      abi: z.array(z.any()).describe("The ABI (Application Binary Interface) of the smart contract function, as a JSON array"),
-      functionName: z.string().describe("The name of the function to call on the contract (e.g., 'balanceOf')"),
-      args: z.array(z.any()).optional().describe("The arguments to pass to the function, as an array (e.g., ['0x1234...'])"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Defaults to Ethereum mainnet.")
-    },
-    async ({ contractAddress, abi, functionName, args = [], network = "ethereum" }) => {
-      try {
-        // Parse ABI if it's a string
-        const parsedAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
-
-        const params = {
-          address: contractAddress as Address,
-          abi: parsedAbi,
-          functionName,
-          args
-        };
-
-        const result = await services.readContract(params, network);
-
-        return {
-          content: [{
-            type: "text",
-            text: services.helpers.formatJson(result)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error reading contract: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Write to contract using environment private key
-  server.tool(
-    "write_contract",
-    "Write data to a smart contract by calling a state-changing function using the server's private key. This modifies blockchain state and requires gas payment and transaction signing.",
-    {
-      contractAddress: z.string().describe("The address of the smart contract to interact with"),
-      abi: z.array(z.any()).describe("The ABI (Application Binary Interface) of the smart contract function, as a JSON array"),
-      functionName: z.string().describe("The name of the function to call on the contract (e.g., 'transfer')"),
-      args: z.array(z.any()).describe("The arguments to pass to the function, as an array (e.g., ['0x1234...', '1000000000000000000'])"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Defaults to Ethereum mainnet.")
-    },
-    async ({ contractAddress, abi, functionName, args, network = "ethereum" }) => {
-      try {
-        // Parse ABI if it's a string
-        const parsedAbi = typeof abi === 'string' ? JSON.parse(abi) : abi;
-
-        const contractParams: Record<string, any> = {
-          address: contractAddress as Address,
-          abi: parsedAbi,
-          functionName,
-          args
-        };
-
-        const txHash = await services.writeContractWithEnvKey(
-          contractParams,
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              network,
-              transactionHash: txHash,
-              message: "Contract write transaction sent successfully"
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error writing to contract: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Get ERC20 token information
-  server.tool(
-    "get_token_info",
-    "Get comprehensive information about an ERC20 token including name, symbol, decimals, total supply, and other metadata. Use this to analyze any token on EVM chains.",
-    {
-      tokenAddress: z.string().describe("The contract address of the ERC20 token (e.g., '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' for USDC on Ethereum)"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Defaults to Ethereum mainnet.")
-    },
-    async ({ tokenAddress, network = "ethereum" }) => {
-      try {
-        const tokenInfo = await services.getERC20TokenInfo(tokenAddress as Address, network);
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              address: tokenAddress,
-              network,
-              ...tokenInfo
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error fetching token info: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Get NFT (ERC721) information
-  server.tool(
-    "get_nft_info",
-    "Get detailed information about a specific NFT (ERC721 token), including collection name, symbol, token URI, and current owner if available.",
-    {
-      tokenAddress: z.string().describe("The contract address of the NFT collection (e.g., '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D' for Bored Ape Yacht Club)"),
-      tokenId: z.string().describe("The ID of the specific NFT token to query (e.g., '1234')"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Most NFTs are on Ethereum mainnet, which is the default.")
-    },
-    async ({ tokenAddress, tokenId, network = "ethereum" }) => {
-      try {
-        const nftInfo = await services.getERC721TokenMetadata(
-          tokenAddress as Address,
-          BigInt(tokenId),
-          network
-        );
-
-        // Check ownership separately
-        let owner = null;
-        try {
-          // This may fail if tokenId doesn't exist
-          owner = await services.getPublicClient(network).readContract({
-            address: tokenAddress as Address,
-            abi: [{
-              inputs: [{ type: 'uint256' }],
-              name: 'ownerOf',
-              outputs: [{ type: 'address' }],
-              stateMutability: 'view',
-              type: 'function'
-            }],
-            functionName: 'ownerOf',
-            args: [BigInt(tokenId)]
-          });
-        } catch (e) {
-          // Ownership info not available
-        }
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              contract: tokenAddress,
-              tokenId,
-              network,
-              ...nftInfo,
-              owner: owner || 'Unknown'
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error fetching NFT info: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Check NFT ownership
-  server.tool(
-    "check_nft_ownership",
-    "Check if an address owns a specific NFT",
-    {
-      tokenAddress: z.string().describe("The contract address or ENS name of the NFT collection (e.g., '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D' for BAYC or 'boredapeyachtclub.eth')"),
-      tokenId: z.string().describe("The ID of the NFT to check (e.g., '1234')"),
-      ownerAddress: z.string().describe("The wallet address or ENS name to check ownership against (e.g., '0x1234...' or 'vitalik.eth')"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
-    },
-    async ({ tokenAddress, tokenId, ownerAddress, network = "ethereum" }) => {
-      try {
-        const isOwner = await services.isNFTOwner(
-          tokenAddress,
-          ownerAddress,
-          BigInt(tokenId),
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              tokenAddress,
-              tokenId,
-              ownerAddress,
-              network,
-              isOwner,
-              result: isOwner ? "Address owns this NFT" : "Address does not own this NFT"
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error checking NFT ownership: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // Add tool for getting ERC721 NFT balance
-  server.tool(
-    "get_nft_balance",
-    "Get the total number of NFTs owned by an address from a specific collection. This returns the count of NFTs, not individual token IDs.",
-    {
-      tokenAddress: z.string().describe("The contract address of the NFT collection (e.g., '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D' for Bored Ape Yacht Club)"),
-      ownerAddress: z.string().describe("The wallet address to check the NFT balance for (e.g., '0x1234...')"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', 'polygon') or chain ID. Most NFTs are on Ethereum mainnet, which is the default.")
-    },
-    async ({ tokenAddress, ownerAddress, network = "ethereum" }) => {
-      try {
-        const balance = await services.getERC721Balance(
-          tokenAddress as Address,
-          ownerAddress as Address,
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              collection: tokenAddress,
-              owner: ownerAddress,
-              network,
-              balance: balance.toString()
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error fetching NFT balance: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true
-        };
-      }
-    }
-  );
-
-  // TOKEN DEPLOYMENT TOOLS
-
-  // Deploy a new ERC20 token
-  server.tool(
-    "deploy_token",
-    "Deploy a new ERC20 token contract with the specified name and symbol",
-    {
-      name: z.string().describe("The name of the token (e.g., 'My Token')"),
-      symbol: z.string().describe("The symbol of the token (e.g., 'MTK')"),
-      decimals: z.number().optional().describe("The number of decimals for the token (default: 18)"),
-      totalSupply: z.number().optional().describe("The total supply of tokens in whole units (default: 100,000,000)"),
-      network: z.string().optional().describe("Network name (e.g., 'ethereum', 'optimism', 'arbitrum', 'base', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to Ethereum mainnet.")
-    },
-    async ({ name, symbol, decimals = 18, totalSupply = 100000000, network = "bsc-testnet" }) => {
-      try {
-        const result = await services.deployERC20Token(
-          name,
-          symbol,
-          decimals,
-          totalSupply,
-          network
-        );
-
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              txHash: result.txHash,
-              contractAddress: result.contractAddress,
-              name,
-              symbol,
-              decimals,
-              totalSupply,
-              network
-            }, null, 2)
-          }]
-        };
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Error deploying token: ${error instanceof Error ? error.message : String(error)}`
           }],
           isError: true
         };
