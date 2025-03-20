@@ -8,6 +8,10 @@
   - Added better error handling and input validation
   - Extracted PancakeSwap constants to separate file
   - Converted tool schemas to use Zod for better type safety
+- Separated token deployment functionality into dedicated file
+  - Moved ERC20 token deployment logic to token-deploy.ts
+  - Improved contracts.ts maintainability by reducing file size
+  - Better code organization through modular architecture
 ### Added
 - ENS name resolution support for all address parameters
 - Support for 30+ EVM networks including testnets
