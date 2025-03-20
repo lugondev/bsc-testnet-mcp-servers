@@ -564,6 +564,104 @@ export function registerEVMTools(server: McpServer) {
 
   // Get latest block
   server.tool(
+    "enable_trading",
+    "Enable trading for a tax token contract with specified parameters",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      contractAddress: z.string().describe("The address of the tax token contract"),
+      maxHolder: z.string().describe("Maximum amount of tokens a wallet can hold (in token units)"),
+      maxBuy: z.string().describe("Maximum amount of tokens that can be bought in a single transaction (in token units)"),
+      swapAtAmount: z.string().describe("Amount of tokens that triggers a swap (in token units)"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', etc.) or chain ID. Defaults to BSC.")
+    },
+    async ({ walletName, contractAddress, maxHolder, maxBuy, swapAtAmount, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const txHash = await services.enableTrading(
+          contractAddress,
+          maxHolder,
+          maxBuy,
+          swapAtAmount,
+          walletName,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              network,
+              transactionHash: txHash,
+              contractAddress,
+              maxHolder,
+              maxBuy,
+              swapAtAmount,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error enabling trading: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "set_swap_and_liquify_enabled",
+    "Enable or disable swap and liquify functionality for a tax token",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      contractAddress: z.string().describe("The address of the tax token contract"),
+      enabled: z.boolean().describe("Whether to enable (true) or disable (false) swap and liquify"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', etc.) or chain ID. Defaults to BSC.")
+    },
+    async ({ walletName, contractAddress, enabled, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        const txHash = await services.setSwapAndLiquifyEnabled(
+          contractAddress,
+          enabled,
+          walletName,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              network,
+              transactionHash: txHash,
+              contractAddress,
+              enabled,
+              fromWallet: walletName
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error setting swap and liquify state: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  server.tool(
     "get_latest_block",
     "Get the latest block from the EVM",
     {

@@ -1,16 +1,12 @@
 import {
 	parseEther,
 	parseUnits,
-	formatUnits,
 	type Address,
 	type Hash,
 	type Hex,
-	type Abi,
 	getContract,
-	type Account
 } from 'viem';
 import { getPublicClient, getWalletClient, getStoredWalletClient } from './clients.js';
-import { getChain } from '../chains.js';
 import { resolveAddress } from './ens.js';
 
 // Standard ERC20 ABI for transfers
