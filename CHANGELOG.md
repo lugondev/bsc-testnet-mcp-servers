@@ -46,3 +46,10 @@
   - Automatic price calculation and validation
   - Support for both Ethereum and BSC networks
   - Proper error handling and transaction validation
+### Added
+- Contract verification tools for BSCScan
+  - Added verify_contract tool for verifying smart contracts
+  - Added check_verification_status tool to monitor verification progress
+  - Support for generic Solidity contracts with configurable parameters
+  - Support for different compiler versions and optimization settings
+  - Improved error handling with detailed error messages
