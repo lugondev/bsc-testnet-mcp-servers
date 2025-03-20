@@ -66,12 +66,15 @@ export function registerDeployTools(server: McpServer) {
 			walletName: z.string().describe("The name of the stored wallet to use for deployment"),
 			name: z.string().describe("Token name (e.g., 'My Token')"),
 			symbol: z.string().describe("Token symbol/ticker (e.g., 'MTK')"),
-			dexRouter: z.string().describe("DEX router contract address for liquidity pair creation"),
+			dexRouter: z.string().describe(`DEX router contract address for liquidity pair creation.
+Uniswap: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
+Pancake: 0x10ED43C718714eb63d5aA57B78B54704E256024E
+user must pick one router for action`),
 			developmentFund: z.string().optional().describe("Address that receives collected transaction fees (defaults to zero address)"),
-			percentageBuyFee: z.number().optional().describe("Fee percentage charged on buy transactions (e.g., 5 for 5%, default: 0)"),
-			percentageSellFee: z.number().optional().describe("Fee percentage charged on sell transactions (e.g., 5 for 5%, default: 0)"),
+			percentageBuyFee: z.number().optional().describe("Fee percentage charged on buy transactions (e.g., 5 for 5%, default: 3). Confirm before deploy"),
+			percentageSellFee: z.number().optional().describe("Fee percentage charged on sell transactions (e.g., 5 for 5%, default: 3). Confirm before deploy"),
 			totalSupply: z.number().optional().describe("Total supply of tokens to mint (default: 100,000,000)"),
-			network: z.string().optional().describe("Network name (e.g., 'bsc', 'ethereum', 'optimism', 'arbitrum', etc.) or chain ID. Supports all EVM-compatible networks. Defaults to BSC.")
+			network: z.string().optional().describe("Network name or chain ID. Supports all EVM-compatible networks. Defaults to 'bsc'.")
 		},
 		async ({ walletName, name, symbol, dexRouter, developmentFund, percentageBuyFee = 0, percentageSellFee = 0, totalSupply = 100000000, network = "bsc" }) => {
 			try {
