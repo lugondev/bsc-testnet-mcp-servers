@@ -475,6 +475,64 @@ export function registerEVMTools(server: McpServer) {
     }
   );
 
+  // Add liquidity ETH to PancakeSwap pair
+  server.tool(
+    "add_liquidity",
+    "Add ETH and token liquidity to create or increase a Uniswap/PancakeSwap liquidity pool position",
+    {
+      walletName: z.string().describe("The name of the stored wallet to use for the transaction"),
+      tokenAddress: z.string().describe("The ERC20 token contract address to pair with ETH"),
+      amountToken: z.string().describe("Amount of tokens to add as liquidity (in token units)"),
+      amountETH: z.string().describe("Amount of ETH to add as liquidity (in ETH units)"),
+      dexRouter: z.string().describe("DEX router contract address for liquidity pair creation"),
+      slippage: z.number().optional().describe("Maximum allowed slippage percentage (default: 0.5)"),
+      network: z.string().optional().describe("Network name (e.g., 'bsc', etc.) or chain ID. Defaults to BSC.")
+    },
+    async ({ walletName, tokenAddress, dexRouter, amountToken, amountETH, slippage = 0.5, network = "bsc" }) => {
+      try {
+        // Verify the wallet exists
+        await services.walletService.getWalletByName(walletName);
+
+        // Get wallet private key
+        const wallet = await services.walletService.getWalletByName(walletName);
+
+        const txHash = await services.routerService.addLiquidityETH(
+          wallet.privateKey,
+          tokenAddress,
+          amountToken,
+          amountETH,
+          slippage,
+          dexRouter,
+          network
+        );
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              network,
+              transactionHash: txHash,
+              tokenAddress,
+              amountToken,
+              amountETH,
+              fromWallet: walletName,
+              message: "Successfully added liquidity to PancakeSwap pool"
+            }, null, 2)
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error adding liquidity: ${error instanceof Error ? error.message : String(error)}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
   // Get supported networks
   server.tool(
     "get_supported_networks",

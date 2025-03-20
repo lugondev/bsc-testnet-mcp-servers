@@ -1,4 +1,4 @@
-import { type Hex, parseEther, parseUnits } from 'viem';
+import { type Address, type Hex, parseEther, parseUnits } from 'viem';
 import { getWalletClient, getPublicClient } from './clients.js';
 import {
 	PANCAKE_ROUTER,
@@ -25,8 +25,51 @@ const getSwapDeadline = (minutes = 20): bigint => {
 	return BigInt(Math.floor(Date.now() / 1000) + minutes * 60);
 };
 
-/** Helper class for PancakeSwap Router operations */
+/** Helper class for DEX Router operations */
 export class RouterService {
+
+	/**
+	 * Add liquidity to a token/ETH pair on Uniswap or PancakeSwap
+	 * @throws Error if parameters are invalid or operation fails
+	 */
+	async addLiquidityETH(
+		privKey: string | Hex,
+		tokenAddress: string | Address,
+		amountToken: string,
+		amountETH: string,
+		slippagePercent = 0.5,
+		routerAddress = PANCAKE_ROUTER,
+		network = 'bsc'
+	): Promise<`0x${string}`> {
+		validateAmount(amountToken);
+		validateAmount(amountETH);
+		validateSlippage(slippagePercent);
+
+		const client = getWalletClient(privKey, network);
+		if (!client.account) throw new Error('Failed to initialize wallet client');
+
+		try {
+			const slippageMultiplier = 1 - (slippagePercent / 100);
+			const amountTokenDesired = parseUnits(amountToken, 18);
+			const amountTokenMin = BigInt(Number(amountTokenDesired) * slippageMultiplier);
+			const amountETHMin = BigInt(Number(parseEther(amountETH)) * slippageMultiplier);
+			const deadline = getSwapDeadline();
+			const value = parseEther(amountETH);
+
+			return await client.writeContract({
+				address: routerAddress as Address,
+				abi: PANCAKE_ROUTER_ABI,
+				functionName: 'addLiquidityETH',
+				args: [tokenAddress, amountTokenDesired, amountTokenMin, amountETHMin, client.account.address, deadline],
+				value,
+				account: client.account,
+				chain: client.chain
+			});
+		} catch (error) {
+			throw new Error(`Add liquidity ETH failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
 	/**
 	 * Calculate the minimum ETH to receive based on USDT input
 	 * @throws Error if amount is invalid or calculation fails

@@ -39,3 +39,10 @@
   - Configurable buy/sell fee percentages
   - Development fund for collecting fees
   - Automatic liquidity pair creation
+### Added
+- Add liquidity ETH functionality for Uniswap and PancakeSwap
+  - Support for adding ETH/token liquidity to both DEXs
+  - Configurable slippage tolerance
+  - Automatic price calculation and validation
+  - Support for both Ethereum and BSC networks
+  - Proper error handling and transaction validation
